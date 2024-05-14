@@ -33,7 +33,7 @@ public class SeedSellOrdersBatch
             string batchSizeStr = query["batchSize"];
             bool.TryParse(query["isWhenAll"], out bool isWhenAll);
             
-            var tableClient = _tableService.GetTableClient("sellorders");
+            var tableClient = _tableService.GetTableClient(StorageConfiguration.SellOrderTableName);
 
             var sellOrderList = GetFakeSellOrders(1000);
 
@@ -91,7 +91,7 @@ public class SeedSellOrdersBatch
             .RuleFor(x => x.PartitionKey, f => partitionKey)
             .RuleFor(x => x.RowKey, f => Guid.NewGuid().ToString())
             .RuleFor(x => x.PokemonName, f => f.PickRandom(pokemonList))
-            .RuleFor(x => x.SellPrice, f => f.Commerce.Price(100, 1000, 2, "€"));
+            .RuleFor(x => x.SellPrice, f => f.Commerce.Price(100, 1000, 2, "ï¿½"));
 
         return sellOrderFaker.Generate(count);
     }

@@ -8,11 +8,7 @@
     <DockerFastModeProjectMountDirectory>/home/site/wwwroot</DockerFastModeProjectMountDirectory>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <UserSecretsId>7069c4f1-8da3-47c8-884e-1a960f71cbf5</UserSecretsId>
   </PropertyGroup>
-  <ItemGroup>
-    <Content Include="local.settings.json" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
     <PackageReference Include="Azure.Identity" Version="1.11.2" />

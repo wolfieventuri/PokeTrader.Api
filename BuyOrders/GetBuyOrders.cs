@@ -7,6 +7,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using PokeTrader.Api.SellOrders;
 using static PokeTrader.Api.BuyOrders.ProcessBuyOrder;
+using static PokeTrader.Api.StorageConfiguration;
 
 namespace PokeTrader.Api.BuyOrders;
 
@@ -25,7 +26,7 @@ public class GetBuyOrders
     public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
     {
         _logger.LogInformation("C# HTTP trigger function processed a request.");
-        var tableClient = _tableServiceClient.GetTableClient("buyorders");
+        var tableClient = _tableServiceClient.GetTableClient(BuyOrderTableName);
 
         Page<BuyOrderEntity>? page = tableClient
             .Query<BuyOrderEntity>(filter: $"PartitionKey eq 'buy_order'")

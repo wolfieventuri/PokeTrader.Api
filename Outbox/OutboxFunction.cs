@@ -3,57 +3,68 @@ using Azure.Storage.Queues;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using PokeTrader.Api.SellOrders;
-using static PokeTrader.Api.BuyOrders.PlaceBuyOrder;
+using System.Text.Json;
+using static PokeTrader.Api.BuyOrders.PlaceBuyOrderFunction;
 
 namespace PokeTrader.Api.Outbox;
 
-//public class OutboxFunction
-//{
-//    private readonly ILogger<GetSellOrders> _logger;
-//    private readonly TableServiceClient _tableService;
+public class OutboxFunction
+{
+    private readonly ILogger<GetSellOrders> _logger;
+    private readonly TableServiceClient _tableService;
+    private readonly QueueServiceClient _queueService;
 
-//    private const string partitionKey = "pokemon_sell_order";
-//    public OutboxFunction(ILogger<GetSellOrders> logger, TableServiceClient tableService)
-//    {
-//        _logger = logger;
-//        _tableService = tableService;
-//    }
+    private const string partitionKey = "pokemon_sell_order";
+    public OutboxFunction(ILogger<GetSellOrders> logger, TableServiceClient tableService, QueueServiceClient queueService)
+    {
+        _logger = logger;
+        _tableService = tableService;
+        _queueService = queueService;
+    }
 
-//    [Function("OutboxFunction")]
-//    public void Run([TimerTrigger("*/15 * * * * *")] TimerInfo myTimer)
-//    {
-//        _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+    [Function("OutboxFunction")]
+    public void Run([TimerTrigger("*/5 * * * * *")] TimerInfo myTimer)
+    {
+        _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
-//        var tableClient = _tableService.GetTableClient("sellorders");
+        var tableClient = _tableService.GetTableClient(StorageConfiguration.SellOrderTableName);
 
-//        var query = tableClient.Query<OutboxEvent>(filter: $"PartitionKey eq '{partitionKey}' and RowKey ge 'outbox_'");
+        var query = tableClient.Query<OutboxEvent>(filter: $"PartitionKey eq '{partitionKey}' and RowKey ge 'outbox_'");
 
-//        var queueService = new QueueServiceClient("AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;DefaultEndpointsProtocol=http;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;");
-//        var queueClient = queueService.GetQueueClient("outbox-bus");
+        var queueClient = _queueService.GetQueueClient(StorageConfiguration.OutboxQueueName);
 
-//        foreach (var item in query)
-//        {
-//            var outboxEvt = item;
+        foreach (var item in query)
+        {
+            var outboxEvt = JsonSerializer.Deserialize<OutboxEvent>(item.EventData);
+            
 
-//            var sendMsgResult = queueClient.SendMessage($"processed {outboxEvt.RowKey}");
+            var buyOrderIssuedDto = new BuyOrderIssued(Guid.Parse(outboxEvt.RowKey), DateTimeOffset.UtcNow);
 
-//            if (!sendMsgResult.GetRawResponse().IsError)
-//            {
-//                _logger.LogInformation($"outbox msg successfully sent for {outboxEvt.RowKey}");
-//            }
+            var sendMsgResult = queueClient.SendMessage(Base64Encode(JsonSerializer.Serialize(buyOrderIssuedDto)));
 
-//            var deleteResult = tableClient.DeleteEntity(partitionKey, outboxEvt.RowKey);
+            if (!sendMsgResult.GetRawResponse().IsError)
+            {
+                _logger.LogInformation($"outbox msg successfully sent for {item.RowKey}");
+            }
 
-//            if (!deleteResult.IsError)
-//            {
-//                _logger.LogInformation($"outbox entity deleted after successfully publish {outboxEvt.RowKey}");
-//            }
-//        }
+            var deleteResult = tableClient.DeleteEntity(partitionKey, item.RowKey);
 
-        
-//        if (myTimer.ScheduleStatus is not null)
-//        {
-//            _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
-//        }
-//    }
-//}
+            if (!deleteResult.IsError)
+            {
+                _logger.LogInformation($"outbox entity deleted after successfully publish {outboxEvt.RowKey}");
+            }
+        }
+
+
+        if (myTimer.ScheduleStatus is not null)
+        {
+            _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
+        }
+    }
+
+    private static string Base64Encode(string plainText)
+    {
+        var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
+        return System.Convert.ToBase64String(plainTextBytes);
+    }
+}
