@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Azure.Data.Tables;
 using PokeTrader.Api;
 using Azure.Storage.Queues;
+using Azure.Storage.Blobs;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWebApplication()
@@ -22,8 +23,10 @@ var host = new HostBuilder()
                 var conString = context.Configuration.GetValue<string>("special");
                 clients.AddTableServiceClient(connectionString: conString);
                 clients.AddQueueServiceClient(connectionString: conString);
+                clients.AddBlobServiceClient(connectionString: conString);
                 var tableServiceClient = new TableServiceClient(conString);
                 var queueServiceClient = new QueueServiceClient(conString);
+                var blobServiceClient = new BlobServiceClient(conString);
                 tableServiceClient.CreateTableIfNotExists(StorageConfiguration.SellOrderTableName);
                 tableServiceClient.CreateTableIfNotExists(StorageConfiguration.BuyOrderTableName);
                 queueServiceClient.CreateQueue(StorageConfiguration.OutboxQueueName);
